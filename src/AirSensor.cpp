@@ -54,11 +54,11 @@ void AirSensor::loop()
     LOG_VERBOSE("cycle: [%lu]", _cycle);
 
     {
-        TIMEPROFILEEXT("loop measure");
+        TIMEPROFILE("loop measure");
 
         read_air_data();
 
-        if(_cycle % 30){
+        if(!(_cycle % 30)){
             read_battery_data();  // Check battery every 30 minutes
         }
 

@@ -11,8 +11,6 @@
     #define TIMEPROFILE(op)
 #endif
 
-#define TIMEPROFILEEXT(op) TimeProfiler tp(op)
-
 class TimeProfiler
 {
 public:
