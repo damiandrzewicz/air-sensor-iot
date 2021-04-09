@@ -1,26 +1,29 @@
 #include "AirSensor.h"
 
 #include "uptime.h"
-#include "../../../src/settings.h"
+#include "Settings.h"
+#include "Credentials.h"
 #include "Logger.h"
 #include "TimeProfiler.h"
+#include <ArduinoUniqueID.h>
 
 
 void AirSensor::setup()
 {
     LOG_DEBUG("exec...");
 
+    uint16_t id = build_unique_id();
+
     LOG_NOTICE("Starting radio... Frequency: [868MHz], NodeId: [%d], NetworkId: [%d], ATC_RSSI: [%d]",
-        NODEID, NETWORKID, ATC_RSSI);
+        id, NETWORKID, ATC_RSSI);
     // Init radio
     {
         TIMEPROFILE("Init radio");
-        _radio.initialize(FREQUENCY,NODEID,NETWORKID);
+        _radio.initialize(FREQUENCY, id, NETWORKID);
         _radio.setHighPower(); //must include this only for RFM69HW/HCW!
         _radio.encrypt(ENCRYPTKEY);
         _radio.enableAutoPower(ATC_RSSI);
     }
-
 
     LOG_NOTICE("Setting radio in sleep mode...");
     _radio.sleep();
@@ -37,14 +40,34 @@ void AirSensor::setup()
     _bme280.setMode(MODE_SLEEP);
 
     LOG_NOTICE("Initial readings...");
-    readAirData();
-    readBatteryData();
-    readUptime();
+    read_air_data();
+    read_battery_data();
+    read_uptime();
 
-    LOG_NOTICE("Setting PowerSleep delay to [%d] ms", LOOPDELAYMS);
+    LOG_NOTICE("Setting PowerSleep delay to [%lu] ms", LOOPDELAYMS);
 }
 
-void AirSensor::readAirData()
+void AirSensor::loop()
+{
+    LOG_DEBUG("exec...");
+    _cycle++;
+    LOG_VERBOSE("cycle: [%lu]", _cycle);
+
+    {
+        TIMEPROFILEEXT("loop measure");
+
+        read_air_data();
+
+        if(_cycle % 30){
+            read_battery_data();  // Check battery every 30 minutes
+        }
+
+        read_uptime();
+        send_data(); // Send data buffer 
+  }
+}
+
+void AirSensor::read_air_data()
 {
     LOG_DEBUG("exec...");
     LOG_DEBUG("Setting bme280 to ForcedMode...");
@@ -58,13 +81,13 @@ void AirSensor::readAirData()
 
     {
         TIMEPROFILE("BME280 read");
-        _data.air.temperature = _bme280.readTempC();
-        _data.air.humidity = _bme280.readFloatHumidity();
-        _data.air.pressure = _bme280.readFloatPressure() / 100.0F; //hPa
+        _data.air_data.temperature = _bme280.readTempC();
+        _data.air_data.humidity = _bme280.readFloatHumidity();
+        _data.air_data.pressure = _bme280.readFloatPressure() / 100.0F; //hPa
     }
 }
 
-void AirSensor::readBatteryData()
+void AirSensor::read_battery_data()
 {
     LOG_DEBUG("exec...");
 
@@ -79,15 +102,15 @@ void AirSensor::readBatteryData()
     {
         TIMEPROFILE("Battery calc");
         readings /= 5;
-        _data.batteryLevel = (readings * 3.0) / 1023.0;
+        _data.battery_level = (readings * 3.0) / 1023.0;
         static constexpr uint16_t LowestAnalogLevelBattery = (2.55 * 1023.0) / 3.0;
-        _data.batteryPercent = ((readings - LowestAnalogLevelBattery) / (1023.0 - LowestAnalogLevelBattery)) * 100;
+        _data.battery_percent = ((readings - LowestAnalogLevelBattery) / (1023.0 - LowestAnalogLevelBattery)) * 100;
     }
 
     LOG_DEBUG("readings: %d", readings);
 }
 
-void AirSensor::readUptime()
+void AirSensor::read_uptime()
 {
     LOG_DEBUG("exec...");
 
@@ -99,21 +122,19 @@ void AirSensor::readUptime()
         uptime::calculateUptime(milliseconds);
     }
 
-    sprintf(_data.uptime, "%lu;%lu:%lu", uptime::getDays(), uptime::getHours(), uptime::getMinutes());
+    sprintf(_data.uptime, "%lu:%lu:%lu", uptime::getDays(), uptime::getHours(), uptime::getMinutes());
 
     LOG_DEBUG("uptime: %s", _data.uptime);
 }   
 
-void AirSensor::sendData()
+void AirSensor::send_data()
 {
     LOG_DEBUG("exec...");
-    sprintf(_payload, "%d#%.2f#%.2f#%.2f#%.2f#%d#%s", 
-        NODEID,
-        _data.air.temperature,
-        _data.air.humidity,
-        _data.air.pressure,
-        _data.batteryLevel,
-        _data.batteryPercent,
+    sprintf(_payload, "%.2f;%.2f;%.2f;%d;%s", 
+        _data.air_data.temperature,
+        _data.air_data.humidity,
+        _data.air_data.pressure,
+        _data.battery_percent,
         _data.uptime
     );
 
@@ -128,7 +149,6 @@ void AirSensor::sendData()
         _radio.sleep();
     }
 
-
     if(!res)
     {
         LOG_WARNING("missing ack...");
@@ -137,28 +157,13 @@ void AirSensor::sendData()
     LOG_VERBOSE("Sent Payload: [%s]", _payload);
 }
 
-unsigned long AirSensor::getCycle()
+uint16_t AirSensor::build_unique_id()
 {
-    return _cycle;
+    uint16_t id = 0;
+	for (size_t i = 0; i < UniqueIDsize; i++)
+	{
+        id += UniqueID[i];
+	}
+    return id;
 }
 
-void AirSensor::loop()
-{
-    LOG_DEBUG("exec...");
-    _cycle++;
-    LOG_VERBOSE("_cycle: [%lu]", _cycle);
-
-    {
-        TIMEPROFILEEXT("loop measure");
-
-        readAirData();
-
-        if(_cycle % 30){
-            readBatteryData();  // Check battery every 30 minutes
-        }
-
-        readUptime();
-        
-        sendData(); // Send data buffer 
-  }
-}

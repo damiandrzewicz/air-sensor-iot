@@ -52,6 +52,11 @@ class uptime
     static unsigned long getMinutes();
     static unsigned long getHours();
     static unsigned long getDays();
+
+    static unsigned long getTotalMilliseconds();
+    static unsigned long getTotalSeconds();
+    static unsigned long getTotalMinutes();
+    static unsigned long getTotalHours();
       
   private:
     static unsigned long m_milliseconds;

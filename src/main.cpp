@@ -4,14 +4,14 @@
 #include "Logger.h"
 #include "LowPowerWrapper.h"
 #include "AirSensor.h"
-#include "settings.h"
+#include "Settings.h"
 
 AirSensor AirSensor_;
 
 void setup() {
   Serial.begin(BAUD);
 
-  Logger::setLogLevel(Logger::Level::SILENT);
+  Logger::setLogLevel(Logger::Level::VERBOSE);
   LOG_VERBOSE("Starting...");
   LOG_NOTICE("Initialized Serial at [%d] baud", BAUD);
 

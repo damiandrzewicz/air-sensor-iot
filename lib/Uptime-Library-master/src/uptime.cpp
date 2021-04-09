@@ -88,6 +88,22 @@ unsigned long uptime::getDays()
 {
   return uptime::m_days;
 }
+unsigned long uptime::getTotalMilliseconds()
+{
+  return uptime::m_milliseconds;
+}
+unsigned long uptime::getTotalSeconds()
+{
+  return uptime::m_seconds;
+}
+unsigned long uptime::getTotalMinutes()
+{
+  return uptime::m_minutes;
+}
+unsigned long uptime::getTotalHours()
+{
+  return uptime::m_hours;
+}
 /***********************************************************/
 
 //calculate milliseconds, seconds, hours and days
