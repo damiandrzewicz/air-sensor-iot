@@ -18,7 +18,7 @@ void AirSensor::setup()
         id, NETWORKID, ATC_RSSI);
     // Init radio
     {
-        TIMEPROFILE("Init radio");
+        //TIMEPROFILE("Init radio");
         _radio.initialize(FREQUENCY, id, NETWORKID);
         _radio.setHighPower(); //must include this only for RFM69HW/HCW!
         _radio.encrypt(ENCRYPTKEY);
@@ -30,7 +30,7 @@ void AirSensor::setup()
 
     LOG_VERBOSE("Starting BME280... Addr: [0x%02X]", 0x76);
     {
-        TIMEPROFILE("Init bme280");
+        //TIMEPROFILE("Init bme280");
 
         _bme280.setI2CAddress(0x76);
         _bme280.beginI2C();
@@ -54,7 +54,7 @@ void AirSensor::loop()
     LOG_VERBOSE("cycle: [%lu]", _cycle);
 
     {
-        TIMEPROFILE("loop measure");
+        //TIMEPROFILE("loop measure");
 
         read_air_data();
 
@@ -74,13 +74,13 @@ void AirSensor::read_air_data()
     _bme280.setMode(MODE_FORCED); //Wake up sensor and take reading
 
     {
-        TIMEPROFILE("BME280 measure");
+        //TIMEPROFILE("BME280 measure");
         while(_bme280.isMeasuring() == false) ; //Wait for sensor to start measurment
         while(_bme280.isMeasuring() == true) ; //Hang out while sensor completes the reading    
     }
 
     {
-        TIMEPROFILE("BME280 read");
+        //TIMEPROFILE("BME280 read");
         _data.air_data.temperature = _bme280.readTempC();
         _data.air_data.humidity = _bme280.readFloatHumidity();
         _data.air_data.pressure = _bme280.readFloatPressure() / 100.0F; //hPa
@@ -94,13 +94,13 @@ void AirSensor::read_battery_data()
     unsigned int readings=0;
 
     {
-        TIMEPROFILE("Analog read");
+        //TIMEPROFILE("Analog read");
         for (byte i=0; i<5; i++) //take several samples, and average
             readings+=analogRead(A0);
     }
 
     {
-        TIMEPROFILE("Battery calc");
+        //TIMEPROFILE("Battery calc");
         readings /= 5;
         _data.battery_level = (readings * 3.0) / 1023.0;
         static constexpr uint16_t LowestAnalogLevelBattery = (2.55 * 1023.0) / 3.0;
@@ -118,7 +118,7 @@ void AirSensor::read_uptime()
     LOG_DEBUG("milliseconds= %lu", milliseconds);
 
     {
-        TIMEPROFILE("Uptime calc");
+        //TIMEPROFILE("Uptime calc");
         uptime::calculateUptime(milliseconds);
     }
 
@@ -140,12 +140,12 @@ void AirSensor::send_data()
 
     bool res;
     {
-        TIMEPROFILE("RFM send");
+        //TIMEPROFILE("RFM send");
         res = _radio.sendWithRetry(GATEWAYID, _payload, strlen(_payload));
     }
 
     {
-        TIMEPROFILE("RFM sleep");
+        //TIMEPROFILE("RFM sleep");
         _radio.sleep();
     }
 
@@ -160,8 +160,10 @@ void AirSensor::send_data()
 uint16_t AirSensor::build_unique_id()
 {
     uint16_t id = 0;
-	for (size_t i = 0; i < UniqueIDsize; i++)
+
+	for (size_t i = 0; i < 8; i++)
 	{
+        LOG_DEBUG("id: %d=%d", i, UniqueID[i]);
         id += UniqueID[i];
 	}
     return id;

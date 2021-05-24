@@ -6,7 +6,9 @@
 #include "AirSensor.h"
 #include "Settings.h"
 
-AirSensor AirSensor_;
+AirSensor air_sensor;
+
+int led = 9;
 
 void setup() {
   Serial.begin(BAUD);
@@ -19,11 +21,13 @@ void setup() {
   Wire.begin();
   Wire.setClock(400000); //Increase to fast I2C speed!
   
-  AirSensor_.setup();
+  air_sensor.setup();
+
+  //pinMode(led, OUTPUT);  
 }
 
 void loop() {
-  AirSensor_.loop();
+  air_sensor.loop();
   Serial.flush();
   LowPowerWrp.DeepSleep(LOOPDELAYMS);
 }
